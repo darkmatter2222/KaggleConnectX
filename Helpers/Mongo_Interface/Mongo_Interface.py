@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import json
 import os
 
 mongo_host = 'mongodb+srv://cluster0.bp0a9tr.mongodb.net/?retryWrites=true&w=majority'
@@ -25,3 +26,11 @@ def insert_payload(payload):
 def empty_collection():
     collection = initialize_db()
     collection.delete_many({})
+    
+def get_all():
+    results = []
+    collection = initialize_db()
+    doc_cur = collection.find({ "steps" : { "$elemMatch" : { "0.observation.kore" : { "$exists": False } } } })
+    for doc in doc_cur:
+        results.append(doc)
+    return results
