@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from tqdm import tqdm
 import json
 import os
 
@@ -31,6 +32,6 @@ def get_all():
     results = []
     collection = initialize_db()
     doc_cur = collection.find({ "steps" : { "$elemMatch" : { "0.observation.kore" : { "$exists": False } } } })
-    for doc in doc_cur:
+    for doc in tqdm(doc_cur):
         results.append(doc)
     return results
