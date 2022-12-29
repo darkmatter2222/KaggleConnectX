@@ -28,6 +28,8 @@ def winning_move(board, player):
     return False
 
 def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
+    sys.stdout.write(f'me:{me} enemy:{enemey}')
+    
     target_chosen = target_chosen
     targets = np.argwhere(board[:1] == 0)[:,1].tolist()
     if len(targets) == 0:
@@ -49,7 +51,7 @@ def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
         me_row_land = np.argmax(np.argwhere(board[:,sim_win_target] == 0)) # Lowest possible placement possible
         board[me_row_land, sim_win_target] = me
         target_chosen = sim_win_target
-		sys.stdout.write('Winning Play')
+        sys.stdout.write(f'attack! {sim_win_target}')
     else:
         sim_loss = False
         sim_loss_target = 0
@@ -67,70 +69,47 @@ def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
             me_row_land = np.argmax(np.argwhere(board[:,sim_loss_target] == 0)) # Lowest possible placement possible
             board[me_row_land, sim_loss_target] = me
             target_chosen = sim_loss_target
-			sys.stdout.write('Defence')
+            sys.stdout.write(f'Defend! {sim_loss_target}')
         else:
+            
             flat_board = board.flatten().tolist()
-            predicted = False
+            perform_rand_move = False
             try:
-                result = df_map.loc[tuple(flat_board), 'target']
-                predicted = True
+                flat_board.append(me)
+				result = int(df_map.loc[tuple(flat_board), 'target'])
                 me_row_land = np.argmax(np.argwhere(board[:,result] == 0)) # Lowest possible placement possible
                 board[me_row_land, result] = me
                 target_chosen = result
-				sys.stdout.write('Known Action')
+                sys.stdout.write(f'smart move {result}')
             except:
+                sys.stdout.write(f'NO SMART MOVE')
+                perform_rand_move = True
                 pass
             
-            
-            
-            perform_rand_move = False
-            if len(targets) > 1 & recurse_count == 0 & predicted == False:
-                ## recurse this 1x times
-                possible_valid_target = None
-                for target in targets:
-                    recurse_board_1 = board.copy()
-                    me_col_choice = target
-                    me_row_land = np.argmax(np.argwhere(recurse_board_1[:,me_col_choice] == 0)) # Lowest possible placement possible
-                    recurse_board_1[me_row_land, me_col_choice] = me
-                    # assume enemy plays smart
-                    recurse_count = recurse_count + 1
-                    recurse_board_2, target_chosen_meta = smart_move(recurse_board_1, enemey, me, recurse_count)
-                    enemy_win = winning_move(recurse_board_2, enemey)
-                    if not enemy_win:
-                        possible_valid_target = target
-                        break
-                if possible_valid_target != None:
-                    me_col_choice = possible_valid_target # random placement verticaly based on top row
-                    me_row_land = np.argmax(np.argwhere(board[:,me_col_choice] == 0)) # Lowest possible placement possible
-                    board[me_row_land, me_col_choice] = me
-                    target_chosen = me_col_choice
-					sys.stdout.write('Random Action')
-                else:
-                    perform_rand_move = True
-            else:
-                perform_rand_move = True
-                
             if perform_rand_move:
                 me_col_choice = random.choice(targets) # random placement verticaly based on top row
                 me_row_land = np.argmax(np.argwhere(board[:,me_col_choice] == 0)) # Lowest possible placement possible
                 board[me_row_land, me_col_choice] = me
                 target_chosen = me_col_choice
+                sys.stdout.write(f'rand move {me_col_choice}')
     return board, target_chosen
 
-def my_agent(observation, configuration):
-	from random import choice
-	board = np.resize(observation.board,(6,7))
-	#return choice([c for c in range(configuration.columns) if observation.board[c] == 0])
-	me = 2
-	enemy = 1   
-	if sum(observation.board) == 0:
-		sys.stdout.write('i went first')
-		me = 1
-		enemy = 2
-	elif sum(observation.board) == 1:
-		sys.stdout.write('i went second')
-		me = 2
-		enemy = 1    
 
-	board, target = smart_move(board, me, enemy)
-	return target
+# This agent random chooses a non-empty column.
+def my_agent(observation, configuration):
+    from random import choice
+    board = np.resize(observation.board,(6,7))
+    #return choice([c for c in range(configuration.columns) if observation.board[c] == 0])
+    me = 2
+    enemy = 1   
+    if observation.mark == 1:
+		sys.stdout.write('i went first')
+        me = 1
+        enemy = 2
+    elif observation.mark == 2:
+		sys.stdout.write('enemy first')
+        me = 2
+        enemy = 1    
+    
+    board, target = smart_move(board, me, enemy)
+    return target
