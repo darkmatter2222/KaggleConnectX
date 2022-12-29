@@ -76,7 +76,7 @@ def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
             perform_rand_move = False
             try:
                 flat_board.append(me)
-				result = int(df_map.loc[tuple(flat_board), 'target'])
+                result = int(df_map.loc[tuple(flat_board), 'target'])
                 me_row_land = np.argmax(np.argwhere(board[:,result] == 0)) # Lowest possible placement possible
                 board[me_row_land, result] = me
                 target_chosen = result
