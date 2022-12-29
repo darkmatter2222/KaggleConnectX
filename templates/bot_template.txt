@@ -1,0 +1,136 @@
+from kaggle_environments import evaluate, make, utils
+import pandas as pd
+import numpy as np
+import random
+import requests
+from tqdm import tqdm
+from scipy.signal import convolve2d
+import sys
+from io import StringIO
+
+#result = requests.get('https://www.kaggleusercontent.com/episodes/45908179.json')
+#sys.stdout.write('googleresult')
+#sys.stdout.write(str(len(result.text)))
+
+<REPLACEMEWITHDATA>
+
+
+horizontal_kernel = np.array([[ 1, 1, 1, 1]])
+vertical_kernel = np.transpose(horizontal_kernel)
+diag1_kernel = np.eye(4, dtype=np.uint8)
+diag2_kernel = np.fliplr(diag1_kernel)
+detection_kernels = [horizontal_kernel, vertical_kernel, diag1_kernel, diag2_kernel]
+
+def winning_move(board, player):
+    for kernel in detection_kernels:
+        if (convolve2d(board == player, kernel, mode="valid") == 4).any():
+            return True
+    return False
+
+def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
+    target_chosen = target_chosen
+    targets = np.argwhere(board[:1] == 0)[:,1].tolist()
+    if len(targets) == 0:
+        raise ValueError("stale")
+    if len(targets) > 1:
+        random.shuffle(targets)
+    sim_win = False
+    sim_win_target = 0
+    for target in targets:
+        board_copy = board.copy()
+        me_row_land = np.argmax(np.argwhere(board[:,target] == 0)) # Lowest possible placement possible
+        board_copy[me_row_land, target] = me
+        sim_me_win = winning_move(board_copy, me)
+        if sim_me_win:
+            sim_win = True
+            sim_win_target = target
+            break
+    if sim_win:
+        me_row_land = np.argmax(np.argwhere(board[:,sim_win_target] == 0)) # Lowest possible placement possible
+        board[me_row_land, sim_win_target] = me
+        target_chosen = sim_win_target
+		sys.stdout.write('Winning Play')
+    else:
+        sim_loss = False
+        sim_loss_target = 0
+        
+        for target in targets:
+            board_copy = board.copy()
+            enemy_row_land = np.argmax(np.argwhere(board[:,target] == 0)) # Lowest possible placement possible
+            board_copy[enemy_row_land, target] = enemey
+            sim_me_loss = winning_move(board_copy, enemey)
+            if sim_me_loss:
+                sim_loss = True
+                sim_loss_target = target
+                break
+        if sim_loss:
+            me_row_land = np.argmax(np.argwhere(board[:,sim_loss_target] == 0)) # Lowest possible placement possible
+            board[me_row_land, sim_loss_target] = me
+            target_chosen = sim_loss_target
+			sys.stdout.write('Defence')
+        else:
+            flat_board = board.flatten().tolist()
+            predicted = False
+            try:
+                result = df_map.loc[tuple(flat_board), 'target']
+                predicted = True
+                me_row_land = np.argmax(np.argwhere(board[:,result] == 0)) # Lowest possible placement possible
+                board[me_row_land, result] = me
+                target_chosen = result
+				sys.stdout.write('Known Action')
+            except:
+                pass
+            
+            
+            
+            perform_rand_move = False
+            if len(targets) > 1 & recurse_count == 0 & predicted == False:
+                ## recurse this 1x times
+                possible_valid_target = None
+                for target in targets:
+                    recurse_board_1 = board.copy()
+                    me_col_choice = target
+                    me_row_land = np.argmax(np.argwhere(recurse_board_1[:,me_col_choice] == 0)) # Lowest possible placement possible
+                    recurse_board_1[me_row_land, me_col_choice] = me
+                    # assume enemy plays smart
+                    recurse_count = recurse_count + 1
+                    recurse_board_2, target_chosen_meta = smart_move(recurse_board_1, enemey, me, recurse_count)
+                    enemy_win = winning_move(recurse_board_2, enemey)
+                    if not enemy_win:
+                        possible_valid_target = target
+                        break
+                if possible_valid_target != None:
+                    me_col_choice = possible_valid_target # random placement verticaly based on top row
+                    me_row_land = np.argmax(np.argwhere(board[:,me_col_choice] == 0)) # Lowest possible placement possible
+                    board[me_row_land, me_col_choice] = me
+                    target_chosen = me_col_choice
+					sys.stdout.write('Random Action')
+                else:
+                    perform_rand_move = True
+            else:
+                perform_rand_move = True
+                
+            if perform_rand_move:
+                me_col_choice = random.choice(targets) # random placement verticaly based on top row
+                me_row_land = np.argmax(np.argwhere(board[:,me_col_choice] == 0)) # Lowest possible placement possible
+                board[me_row_land, me_col_choice] = me
+                target_chosen = me_col_choice
+    return board, target_chosen
+
+def my_agent(observation, configuration):
+	from random import choice
+	board = np.resize(observation.board,(6,7))
+	#return choice([c for c in range(configuration.columns) if observation.board[c] == 0])
+	me = 2
+	enemy = 1   
+	if sum(observation.board) == 0:
+		sys.stdout.write('i went first')
+		me = 1
+		enemy = 2
+	elif sum(observation.board) == 1:
+		sys.stdout.write('i went second')
+		me = 2
+		enemy = 1    
+
+	board, target = smart_move(board, me, enemy)
+	return target
