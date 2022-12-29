@@ -103,11 +103,11 @@ def my_agent(observation, configuration):
     me = 2
     enemy = 1   
     if observation.mark == 1:
-		sys.stdout.write('i went first')
+        sys.stdout.write('i went first')
         me = 1
         enemy = 2
     elif observation.mark == 2:
-		sys.stdout.write('enemy first')
+        sys.stdout.write('enemy first')
         me = 2
         enemy = 1    
     
