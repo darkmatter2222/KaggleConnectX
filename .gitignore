@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 *.csv
 *.h5
+*.json
