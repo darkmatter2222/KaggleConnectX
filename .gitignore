@@ -131,3 +131,5 @@ dmypy.json
 *.h5
 *.json
 *data
+*test*
+*.tar.gz

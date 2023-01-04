@@ -1,0 +1,1 @@
+tar -pczf sub.tar.gz main.py test5

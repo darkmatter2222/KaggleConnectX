@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import random
 import requests
+from random import choice
 from tqdm import tqdm
 from scipy.signal import convolve2d
 import sys
@@ -13,7 +14,7 @@ from pathlib import Path
 
 
 import keras
-model2 = keras.models.load_model('/kaggle_simulations/agent/test')
+model2 = keras.models.load_model('/kaggle_simulations/agent/test5')
 
 #result = requests.get('https://www.kaggleusercontent.com/episodes/45908179.json')
 #sys.stdout.write('googleresult')
@@ -31,8 +32,39 @@ def winning_move(board, player):
             return True
     return False
 
-def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
-    sys.stdout.write(f'me:{me} enemy:{enemey}')
+def permit_move_filter(me, enemy, board, desiered_target):
+    target = 0
+    sys.stdout.write(f'desiered_target: {desiered_target}')
+    board_copy = board.copy()
+    row = np.argmax(np.argwhere(board_copy[:,desiered_target] == 0))
+    board_copy[row, desiered_target] = me
+    
+    if row > 0:
+        board_copy[row - 1, desiered_target] = enemy
+        enemy_win = winning_move(board_copy, enemy)
+        if enemy_win:
+            targets = np.argwhere(board_copy[:1] == 0)[:,1].tolist()
+            try:
+                targets.remove(desiered_target)
+            except:
+                pass
+                
+            if len(targets) > 0:
+                target = choice(targets)
+                sys.stdout.write('avoideable...')
+            else:
+                sys.stdout.write('gaurenteed predicted loss or stalemate')
+                target = desiered_target
+        else:
+            target = desiered_target
+            sys.stdout.write('safe to proceed...')
+    else:
+        target = desiered_target
+        sys.stdout.write('safe to proceed... at 0')
+    return target
+
+def smart_move(board, me, enemy, recurse_count = 0, target_chosen=0):
+    sys.stdout.write(f'me:{me} enemy:{enemy}')
     
     target_chosen = target_chosen
     targets = np.argwhere(board[:1] == 0)[:,1].tolist()
@@ -63,8 +95,8 @@ def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
         for target in targets:
             board_copy = board.copy()
             enemy_row_land = np.argmax(np.argwhere(board[:,target] == 0)) # Lowest possible placement possible
-            board_copy[enemy_row_land, target] = enemey
-            sim_me_loss = winning_move(board_copy, enemey)
+            board_copy[enemy_row_land, target] = enemy
+            sim_me_loss = winning_move(board_copy, enemy)
             if sim_me_loss:
                 sim_loss = True
                 sim_loss_target = target
@@ -87,6 +119,7 @@ def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
                 row = np.argwhere(board[:,result] == 0)
                 if len(row) > 0:
                     me_row_land = np.argmax(row) # Lowest possible placement possible
+                    result = permit_move_filter(me, enemy, board, result)
                     board[me_row_land, result] = me
                     target_chosen = int(result)
                     sys.stdout.write(f'smart move {result}')
@@ -100,6 +133,7 @@ def smart_move(board, me, enemey, recurse_count = 0, target_chosen=0):
             if perform_rand_move:
                 me_col_choice = random.choice(targets) # random placement verticaly based on top row
                 me_row_land = np.argmax(np.argwhere(board[:,me_col_choice] == 0)) # Lowest possible placement possible
+                me_col_choice = permit_move_filter(me, enemy, board, me_col_choice)
                 board[me_row_land, me_col_choice] = me
                 target_chosen = me_col_choice
                 sys.stdout.write(f'rand move {me_col_choice}')
